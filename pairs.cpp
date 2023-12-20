@@ -1,143 +1,166 @@
-#include <bits/stdc++.h>
-using namespace std;
+#include <iostream>
+#include <vector>
+#include <utility>
+#include <cstdio>
+#include <cstring>
+#include <filesystem>
 
-
-class DataProcessor{
+class DataProcessor {
 public:
-    using Data = vector<pair<long, float>>;
+    using Data = std::vector<std::pair<long, float>>;
+
     DataProcessor() = default;
     ~DataProcessor() = default;
 
-    Data readData(const char* path, bool reverse=false){
-    long t; //timestamp
-    float p; //price
-    Data data{};
-    if (FILE *fp = fopen(path, "r")){
-        while (fscanf(fp,"%d;%f", &t, &p)==2){
-            data.push_back(make_pair(t, (reverse ? 1.0f/p:p)));
-        }
-        fclose(fp);
-    } else{
-        perror("Error opening file\n");
-    }
-    return data;
-}
+    std::vector<Data> readData(std::vector<char*>& paths, const char* target) {
+        std::vector<Data> allData;
 
-    void writeData(const char* out_path, const Data& data){
-    if (FILE *fp = fopen(out_path, "w+")){
-        for (int i=0; i <data.size(); i++)
-            fprintf(fp, "%ld;%f\n", data[i].first, data[i].second);
-        fclose(fp);
-    }
-    else{
-        perror("Error opening file");
-    }
-}
-
-    Data multiplyData(int k, const Data& data1, const Data& data2, const Data& data3){
-    Data data_k;
-    data_k.reserve(data1.size());
-
-    if ((data1.size() == data2.size()) && (data1.size() == data3.size())){
-        for (int i=0; i<data1.size(); i++){
-            float p = k * data1[i].second * data2[i].second*data3[i].second;
-            data_k.push_back(make_pair(data1[i].first, p));
-        }
-    }
-    else{
-        printf("Data has unequal sizes\n");
-    }
-    return data_k;
-}
-
-char** parseCsv(const char* path){
-    
-    namespace fs = std::filesystem;
-    try{
-        unsigned short count = 0;
-        for (const auto& entry: fs::directory_iterator(path)){
-            if (entry.is_regular_file() && entry.path().extension() == ".csv"){
-                count++;
+        for (const char* path : paths) {
+            Data data;
+            long t;
+            float p;
+            bool reverse = compareTargetCurr(path, target);
+            if (FILE* fp = fopen(path, "r")) {
+                while (fscanf(fp, "%ld;%f", &t, &p) == 2) {
+                    data.push_back(std::make_pair(t, (reverse ? 1.0f / p : p)));
+                }
+                fclose(fp);
+            } else {
+                perror("Error opening file\n");
             }
+            allData.push_back(data);
         }
-        if (count == 0){
-            return nullptr;
+        return allData;
+    }
+
+    bool fileExists(const char* filename) {
+        FILE* file;
+        if (file = fopen(filename, "r")) {
+            fclose(file);
+            return true;
         }
+        return false;
+    }
 
-        char** csvFiles = new char*[count+1];
-        unsigned short idx = 0;
+    void writeData(const char* out_path, const Data& data) {
+        if (fileExists(out_path)) {
+            std::cout << "File 'out.csv' already exists. Do you want to overwrite? (Y/N): ";
+            char response;
+            std::cin >> response;
 
-        for(const auto& entry : fs::directory_iterator(path)){
-            if(entry.is_regular_file() && entry.path().extension() == ".csv"){
-                csvFiles[idx] = new char[entry.path().filename().string().size() + 1];
-                std::strcpy(csvFiles[idx], entry.path().filename().string().c_str());
-                idx++;
+            if (response != 'Y' && response != 'y') {
+                std::cout << "Operation cancelled. File not overwritten." << std::endl;
+                return;
             }
         }
 
-        csvFiles[count] = nullptr;
+        if (FILE* fp = fopen(out_path, "w+")) {
+            for (const auto& pair : data) {
+                fprintf(fp, "%ld;%f\n", pair.first, pair.second);
+            }
+            fclose(fp);
+            std::cout << "Data written to 'out.csv' successfully." << std::endl;
+        } else {
+            perror("Error opening file");
+        }
+    }
+    Data multiplyData(int k, const std::vector<Data>& dataVec) {
+        if (dataVec.empty()) {
+            std::cerr << "No data\n";
+            return Data();
+        }
+
+        size_t dataSize = dataVec[0].size();
+        for (const Data& data : dataVec) {
+            if (data.size() != dataSize) {
+                std::cerr << "Data has unequal size\n";
+                return Data();
+            }
+        }
+
+        Data data_k;
+        data_k.reserve(dataSize);
+        for (size_t i = 0; i < dataSize; i++) {
+            float p = 1.0f;
+            for (const Data& data : dataVec) {
+                p *= k * data[i].second;
+            }
+            data_k.push_back(std::make_pair(dataVec[0][i].first, p));
+        }
+
+        return data_k;
+    }
+
+    std::vector<char*> parseCsv(const char* path) {
+        std::vector<char*> csvFiles;
+        namespace fs = std::filesystem;
+        try {
+            
+            for (const auto& entry : fs::directory_iterator(path)) {
+                if (entry.is_regular_file() && entry.path().extension() == ".csv") {
+                    char* fileName = new char[entry.path().filename().string().size() + 1];
+                    std::strcpy(fileName, entry.path().filename().string().c_str());
+                    csvFiles.push_back(fileName);
+                }
+            }
+        } catch (const fs::filesystem_error& e) {
+            std::cerr << "Error accessing directory: " << e.what() << std::endl;
+            // Clear allocated memory if an error occurs
+            for (char* fileName : csvFiles) {
+                delete[] fileName;
+            }
+            csvFiles.clear();
+        }
+
         return csvFiles;
-    } catch (const fs::filesystem_error& e){
-        printf("Error acessing directory: %s\n", e.what());
-        return nullptr;
     }
+
+    char* concatenateStrings(const char* str1, const char* str2) {
+        size_t len1 = strlen(str1);
+        size_t len2 = strlen(str2);
+
+        char* concatenated = new char[len1 + len2 + 1];
+
+        strcpy(concatenated, str1);
+        strcat(concatenated, str2);
+        return concatenated;
+    }
+
+    bool compareTargetCurr(const char* path, const char* target) {
+        const char* ext_s = strrchr(path, '.');
+        if (ext_s == nullptr) {
+            return false; // No extension found
+        }
+
+        size_t fname_l = ext_s - path;
+        size_t target_l = strlen(target);
+
+        if (target_l != fname_l) {
+            return false; // Length mismatch
+    }
+
+    return strncmp(path, target, target_l) == 0;
 }
+    void processDir(const char* dir_path, const char* target_curr, int volume) {
+        std::vector<char*> csvFiles = parseCsv(dir_path);
+        std::vector<Data> allData = readData(csvFiles, target_curr);
+        Data data_k = multiplyData(volume, allData);
+        writeData("./out.csv", data_k);
 
-char* concatenateStrings(const char* str1, const char* str2) {
-    size_t len1 = strlen(str1);
-    size_t len2 = strlen(str2);
-
-    char* concatenated = new char[len1 + len2 + 1]; 
-
-    strcpy(concatenated, str1);
-    strcat(concatenated, str2);
-    return concatenated;
-}
-
-void processDir(const char* dir_path, const char* target_curr){
-    // find all csv files
-    char** csvFiles = parseCsv(dir_path);
-    // read data and reverse target_curr 
-
-    // multiply data and save as out.csv
-}
-
-
-
+        // Clear allocated memory for filenames
+        for (char* fileName : csvFiles) {
+            delete[] fileName;
+        }
+    }
 };
 
-int main(int argc, char* argv[] ){
+int main(int argc, char* argv[]) {
     const char* dir_path = "./";
-
-    const char* path_eur_cad ="./EURCAD.csv";
-    const char* path_cad_chf ="./CADCHF.csv";
-    const char* path_eur_chf ="./EURCHF.csv";
-    const char* out_k_path ="./out.csv";
+    const char* target_curr = "EURCHF";
     int volume = 1;
-    
+
     DataProcessor proc;
-
-    char** csvFiles = proc.parseCsv(dir_path);
-
-
-    if(csvFiles != nullptr){
-        printf("CSV files:\n");
-        for (unsigned short i=0; csvFiles[i] != nullptr; i++){
-            printf("--%s\n", csvFiles[i]);
-            delete[] csvFiles[i];
-        }
-        delete[] csvFiles;
-    } else{
-        printf("No csv files found\n");
-    }
-
-    DataProcessor::Data data_eur_cad = proc.readData(path_eur_cad);
-    DataProcessor::Data data_cad_chf = proc.readData(path_cad_chf);
-    DataProcessor::Data data_eur_chf = proc.readData(path_eur_chf, true);
-     
-    DataProcessor::Data data_k = proc.multiplyData(volume, data_cad_chf, data_eur_cad, data_eur_chf);
-    proc.writeData(out_k_path, data_k);
+    proc.processDir(dir_path, target_curr, volume);
 
     return 0;
 }
-
