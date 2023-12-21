@@ -11,7 +11,7 @@ pip install -r requirements.txt
 
 
 ## Part 1
-Compile part_1.cpp file according your OS
+Compile part_1.cpp file according your compiler
 
 Usage for compiled file:
 
