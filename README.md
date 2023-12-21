@@ -2,10 +2,10 @@
 
 To get started, clone the repository using the following command:
 
-```git clone https://github.com/JutsFunFor/static_arbitrage.git```
+```git clone https://github.com/JutsFunFor/pairs.git```
 
 ```bash
-cd ./static_arbitrage
+cd ./pairs
 pip install -r requirements.txt
 ```
 
