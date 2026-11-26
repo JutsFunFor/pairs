@@ -1,36 +1,23 @@
-### Clone the Project
+# Three currency pairs, one coefficient
 
-To get started, clone the repository using the following command:
+This small C++ and Python experiment aligns EUR/CAD, CAD/CHF and EUR/CHF price series and plots their triangular conversion coefficient. For an initial volume of one, the example computes `EURCAD × CADCHF ÷ EURCHF`.
 
-```git clone https://github.com/JutsFunFor/pairs.git```
+[Read the original exercise in English](EXERCISE.md).
 
-```bash
-cd ./pairs
-pip install -r requirements.txt
+## Reproduce the figures
+
+| Stage | Input | Output |
+| --- | --- | --- |
+| [C++ calculation](part_1.cpp) | The three price CSVs, the pair to invert and an initial volume | `out.csv` |
+| [Python analysis](part_2_3.py) | Price and coefficient series | Plotly figures showing prices, the filtered coefficient, its derivative and extrema |
+
+From the repository root, using a C++17 compiler and Python:
+
+```sh
+c++ -std=c++17 part_1.cpp -o pairs
+./pairs . EURCHF 1
+python3 -m pip install -r requirements.txt
+python3 part_2_3.py
 ```
 
-
-## Part 1
-Compile part_1.cpp file according your compiler
-
-Usage for compiled file:
-
-`part_1.exe <directory_path> <target_currency_pair> <volume>`
-
-`directory_path` - path to directory with .csv files (for example `EURCAD.csv`)
-
-`target_currency_pair` - currency pair that should be reversed (if specified `EURCHF` than `price` values of `EURCHF.csv` will become `1/price` in further calculus)
-
-`volume` - initial volume
-
-### Example:
-
-
-```./part_1.exe ./ EURCHF 1```
-
-It will generate `out.csv` file with coefficents. From previous example: coeff equals multiplication of prices EURCAD* CADCHF* 1/EURCHF * volume
-
-## Part 2-3
-Run script or check for .html files that previously were generated from this script in project folder
-
-`python part_2_3.py`
+To explore the saved figures, open [part2.html](part2.html) and [part3.html](part3.html) from your local checkout.
